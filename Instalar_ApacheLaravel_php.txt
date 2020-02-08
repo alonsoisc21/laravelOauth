@@ -1,0 +1,21 @@
+sudo apt-get update
+sudo apt-get install apache2
+sudo ufw allow 'Apache Full'
+sudo service apache2 status
+sudo apt-get install python-software-properties
+sudo add-apt-repository -y ppa:ondrej/php
+sudo apt-get update
+sudo apt-get install php7.2
+sudo apt-get install php-pear php7.2-curl php7.2-dev php7.2-gd php7.2-mbstring php7.2-zip  php7.2-xml
+sudo apt-get install php-pgsql
+php -v
+sudo apt-get install curl
+curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+composer
+sudo apt-get install postgresql postgresql-client postgresql-contrib libpq-dev
+sudo apt-get install pgadmin3
+sudo -h localhost -u postgres psql -d postgres -W
+#Escribir estos comandos dentro de la base de datos
+#alter user postgres with password 'postgres';
+sudo a2enmod rewrite
+service apache2 restart

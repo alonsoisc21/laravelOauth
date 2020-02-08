@@ -1,0 +1,1243 @@
+-------------------------------------------------
+************************************************
+****** PERSONALIZAR EL RPOYECTO DE LARAVEL******
+************************************************
+
+1.-Cambiar tabla users a usuarios
+database/migratios/000_la_users.php
+### cambiar todo lo que dice users por usuarios
+###NOTA: solo los parametrso entre commillas, mantener las variables.
+
+2.-config/auth.php
+cambiar todo los users entre commillas a usuarios
+
+3.-app/User.php
+###Agregar una variable tabla con el nombre de la nueva  base de datos.
+protected $table='usuarios';
+
+4.- app/Http/Controllers/Auth/RegisterController.php
+
+usuarios= en email
+
+
+5.- Generar nuevamente las tablas.
+
+php artisan migrate:rollback
+php artisan migrate
+php artisan passport:client --password
+php artisan passport:client --personal
+php artisan db:seed
+
+php artisan migrate:fresh
+
+
+/var/www/blog/vendor/laravel/framework/src/Illuminate/Auth/SessionGuard.php
+
+
+
+
+TABLA RELACIONES
+ALTER TABLE contenidoincidentes DROP CONSTRAINT FK_incidentesTOcontenidoincidentes;
+ALTER TABLE contenidoincidentes DROP CONSTRAINT FK_contenidoincidentesTOtipo_seguimiento;
+ALTER TABLE contenidoincidentes DROP CONSTRAINT FK_contenidoincidentesTOnivel_impacto;
+ALTER TABLE contenidoincidentes DROP CONSTRAINT FK_contenidoincidentesTOusuarios_registrar;
+ALTER TABLE contenidoincidentes DROP CONSTRAINT FK_contenidoincidentesTOusuarios_editar;
+ALTER TABLE contenidoincidentes DROP CONSTRAINT FK_contenidoincidentesTOusuarios_validar;
+ALTER TABLE notificacionincidente DROP CONSTRAINT FK_contenidoincidentesTOnotificacionincidente;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+******************************************
+******* DESARROLLO SERVIDOR OAUTH2 *******
+*******    EN PHP 7^ Y LARAVEL 5   *******
+******************************************
+https://www.youtube.com/watch?v=gRbuInSwU9U
+
+LARAVEL
+1.-https://www.youtube.com/watch?v=InQdgo_NW6Q
+2.-https://www.youtube.com/watch?v=WmCltXsEHYk
+3.-https://www.youtube.com/watch?v=1UWKqnwIWJw
+
+--------------------------------------------
+Laravel passport
+
+1.-Ir a al proyeto de laravel
+2.-Config/app.php
+Laravel\Passport\PassportServiceProvider::class,
+3.-Descargar
+composer require laravel/passport
+php artisan migrate
+
+4.-Configuracion para mysql
+###app/Poviders/AppServiceProviders 
+use Illuminate\Support\Facades\Schema;
+###dentro de function boot()
+Schema::defaultStringLength(191);
+###
+php artisan migrate
+
+5.-Configuracion de usuario app\User.php
+### Debajo del namespace
+use Laravel\Passport\HasApiTokens;
+### Dentro de la clase User
+use HasApiTokens, Notificable;
+
+6.-Configuracion de providers app\Providers\AuthServiceProvider.php
+### Debajo del namespace
+use Laravel\Passport\Passport;
+
+7.-Ir a config\auth.php
+### Ir al apartado de api
+'driver'=>'passport',
+
+8.-Ejecutar make auth
+php artisan make:auth
+
+9.-Comprobamos la carpeta resource, en cual genera las plantillas
+para podernos autenticar, la ruta es la siguiente:
+resources/views/auth/
+
+10.-Realizado la configuracion instalar la tecnologia de passport.
+php artisan passport:install
+
+11.-Al terminar la instalacion de passport
+generara dos tokens.
+
+
+12.- ****GENERACION DE CLIENTES****
+
+13.-Lo que hace la aplicacion es generar clientes, para que los
+usuarios puedan tener permisos y de esta manera puedan consumir
+los datos de las distintas APIS, requerimientos para clientes:
+	A) Nombre
+	B) Redirecccion
+	C) Que en bases a estos datos
+	   se genera un has un codigo.
+	D) Usuar la cuenta con el hash 
+	   para comprobar que es un usuario
+	   registrado.
+
+
+14.-Primer paso registrar rutas de redireccion.
+    Providers/AuthServiceProvider
+    ###En el metodo boot() registramos las rutas.
+    Passport::routes();
+
+15.- Ir a terminal y escribir el comando.
+     ###Centrarse solo en las rutas de clientes
+     php artisan route:list
+
+16.- Centrarse en el contenido de la base de datos
+     oauth_clients
+
+17.-Crear un formulario resources/views/client.blade.php
+<form action="{{ url('/oauth/clients') }}" method="POST">
+		<p>
+			<input type="text" name="name" />
+		</p>
+		<p>
+			<input type="text" name="redirect" />
+		</p>
+		<p>
+			<input type="submit" name="send" value="Enviar" />
+		</p>
+		{{ csrf_field() }}
+	</form>
+
+18.- Crear rutas en routes/web.
+### middleware auth para solo usuarios autenticados.
+
+Route::get('/client',function(){
+	return view('client');
+})->middleware('auth');
+
+19.- Comprobar la funcionalidad de la generacion de registros de api.
+	a) Ir a navegador web http://localhost.
+	b) Registrarse o loguearse segun sea el caso.
+	c) Ir a ruta http://localhost/client.
+	   Lista el contenido de registros de la tabla 
+	   oauth_clients, en formato json.
+
+20.- La ruta por  defecto que trae oauth por defecto es la siguiente.
+http://localhost/oauth/clients, el cual lista todos los registros de los,
+clientes en la base de datos, podemos utilizar esto como api, para construir el front.
+
+21.- Crear un modelo que conecte y liste contenido de informacion
+     registrada.
+php artisan make:model Clients
+	###Escribir el siguiente codigo.
+	protected $table ='oauth_clients';
+
+22.- Creamos un controlador del modelo Clients.
+php artisan make:controller ClientController
+	###Inicializar en el encabezado.
+	use Illuminate\Support\Facades\Auth;//Discrimina si exite login.
+	use Illuminate\Support\Facades\DB;//Opcional
+
+	###Crear una funcion index.
+	public function index(){
+        //$clients=\App\Client::all();
+        $clients=\App\Client::where('user_id', Auth::user()->id)->get();
+        /*opcion 2*/
+        //$user = DB::table('oauth_clients')->where('user_id',Auth::user()->id)->get();
+        //print_r($user);
+        $datos=Auth::user()->id;
+        //print_r($datos);
+        //print_r($clients);
+        return view('client',compact('clients'));
+        }
+
+
+
+23.- Dentro del las routes de web.
+
+Route::get('/client','ClientController@index')->middleware('auth');
+/*
+Route::get('/client',function(){
+        return view('client');
+})->middleware('auth');
+*/
+
+24.-Dentro de la vista de formulario de client.blade.php agregar
+    una tabla de visualizacion de contenido.
+
+resources/views/client.blade.php
+
+{{-- $clients --}}
+    
+     <table border="1">
+        <tbody>
+              <tr>
+                 <td>ID</td>
+                 <td>Name</td>
+                 <td>Redirect</td>
+                 <td>Secret</td>
+              </tr>
+              @foreach($clients as $client )
+                      <tr>
+                          <td>{{ $client->id }}</td>
+                          <td>{{ $client->name }}</td>
+                          <td>{{ $client->redirect }}</td>
+                          <td>{{ $client->secret }}</td>
+                      </tr>
+             @endforeach
+        </tbody>
+     </table>
+
+25.- Instalar barryvdh/laravel-cors para dar permisos a usuarios
+     los servicios que puede consumir, donde podemos 
+     establecer que dominios o que direcciones ip pueden
+     tener permisos para consumir los datos.
+
+composer require barryvdh/laravel-cors
+
+26.-Una vez instalado configurar en el array de providers
+    config/app.php
+
+Barryvdh\Cors\ServiceProvider::class,
+
+27.- Registrar el middleware de forma global y 
+     registrarlo tambien en el grupo de middleware que estan
+     en las apis.
+     app/http/kernel.php
+     
+     a) Agregar en middleware declarados:
+
+        protected $middleware=[
+        ##otras configuraciones
+	\Barryvdh\Cors\HandleCors::class,
+	];
+
+     b) Agregar en el grupo de middleware en api:
+
+        protected $middlewareGroups = [
+	## otras configuraciones
+	'api' => [
+            'throttle:60,1',
+            'bindings',
+            \Barryvdh\Cors\HandleCors::class,
+        ],
+
+	];
+
+
+28.- Reaalizado la configuracion ejecutar el siguiente comando.
+    
+php artisan vendor:publish --provider="Barryvdh\Cors\ServiceProvider"
+
+29.-El comando anterior genera un archivo llamado cors en la carpeta config.
+
+config/cors.php
+    
+    a) Dentro del archivo cors.php
+       Se le estan dando permiso a todo las ip
+       Y todos los dominios para que puedan
+       Acceder a los datos de esta aplicacion, esto 
+       se consigue siempre y cuando ya se tenga un cliente
+       registrado en la aplicacio como se realizo
+       anterionrmente con el usuario de pruebas.
+    
+    return [
+    /*
+    |--------------------------------------------------------------------------
+    | Laravel CORS
+    |--------------------------------------------------------------------------
+    |
+    | allowedOrigins, allowedHeaders and allowedMethods can be set to array('*')
+    | to accept any value.
+    |
+    */
+   
+    'supportsCredentials' => false,
+    'allowedOrigins' => ['*'],
+    'allowedOriginsPatterns' => [],
+    'allowedHeaders' => ['*'],
+    'allowedMethods' => ['*'],
+    'exposedHeaders' => [],
+    'maxAge' => 0,
+    ];
+
+
+30.- Password Grant Token en laravel.
+     a) Permite a usuarios de primer nivel como es el caso
+	de una aplicacion movil obtener un toke de acceso
+	mediante la direccion de correo electronico y una
+	contraseña. Lo cual permite loguean un usuario 
+        desde una aplicacion externa usuando los datos que 
+        hay en la plataforma.
+        NOTA: Se aclara que este Grant no es para que los 
+	clientes que se registren a la plataforma lo  puedan
+	crear.Este grant solamente es especifico para el dueño
+	de la plataforma, es para que aplicaciones externas
+	se puedan conectar u obtener los datos de la plataforma
+	mediante un usaurio y contraseña, si estos datos son 
+	correctos el va a devolver un token para que el pueda
+	acceder a los distintos recursos, que se le esta 
+	ofreciendo el api, pero este no lo puede crear un usuario
+	normal que se registre en la plataforma.
+      
+     b) El usuario que se registre pueda crear un cliente
+	y con el cliente que genero, pueda obtener datos de la
+	api sin necesidad de autenticarse(usr y pwd).
+     
+31.- En laravel se necesita crear un grant desde la consola.
+
+	php artisan passport:client --password
+
+	1.- Pide un nombre para el grant.
+	> TestApp
+
+	2.-Genera un ID y una token (Client Secret)
+
+
+32.- Ir a base de datos en la tabla
+	
+	oauth_clients
+        A) Como se ve en campo de user_id, no esta relacionado
+	con ningun usuario y aparece en NULL, esto es por que
+	el que genera el Grant es el dueño de la plataforma es
+	decir el que lo esta desarrollando o la empresa.
+ 
+	B) Mientras que en el campo de la tabla password_client
+	 que es un tipo de grant y tiene el datos de registro 
+        verdadero es decir 1, y es por que el desarrollador va 
+        a necesitar un email y una contraseña para hacer uso de
+	este grant.
+  
+33.- Ahora se va a generar un estatus de relleno, para que una ves
+     el dueño se autentique puead acceder a estos datos por medio de
+     la api que nos ofrece la plataforma.
+
+34.- Crear una migracion  a unos post que hay en la base de datos
+     para poder consumirlos.
+
+php artisan make:migration create_posts_table --create=posts
+
+35.- Ir a la carpeta database/migrations/2019_01_02_002821_create_posts_table.php
+	
+	1.- Abrir el archivo, en la funcion de up(), agregar dos
+	campos title y body.
+
+	 $table->string('title');
+         $table->mediumText('body');
+
+36.- Crear un modelo Post.php (deve ser en singular ya que accedera a db).
+
+	php artisan make:model Post
+
+37.- Habrir el modelo Post.php, vamos especificar los campos
+     que van a ser afectados, es decir se va aespecificar los
+     los campos en los cuales se van a permitir escribir en BD,
+     si no se especifican simplemente los datos no se van a 
+     guardar, esto laravel lo hace para proteccion y por lo que
+     debe de existir esta configuracion.
+
+<?php
+
+namespace App;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Post extends Model
+{
+    //fillable= rellenable
+    protected $fillable=['title','body'];
+}
+
+
+38.- Crear un seeder para la tala post desde consola.
+ ###Se especifica la tabla al que se hace creferencia.
+php artisan make:seeder PostsTableSeeder
+
+39.-Ir a la carpeta database/seeds/PostsTableSeeder.php
+    escribir lo siguiente.
+	
+	<?php
+
+	use Illuminate\Database\Seeder;
+	use App\Post;//Especificar el modelo
+
+	class PostsTableSeeder extends Seeder
+	{
+	    /**	
+	     * Run the database seeds.
+	     *
+	     * @return void
+	     */
+             public function run()
+	     {
+             //Especificar inserte 40 registros.
+             //el cual hace referencia a carpeta
+             //factory
+             factory(Post::class,40)->create();
+	     }
+         }
+
+
+40.- Realizado lo anterio ir a factories/UserFactory.php,
+     editar lo siguiente.
+	###Especificar el modelo referencia, y los campos
+	###de la tabla.
+	
+	$factory->define(App\Post::class, function (Faker $faker) {
+	    return [
+	        'title' => $faker->title,
+	        'body' => $faker->text(100), /*token*/
+	    ];
+	});
+
+41.-Especificar el seeder que va ejecutar la insersion
+    ir a ruta database/seeds/DatabaseSeeder.php
+	
+	1.- Abrir archivo
+	DatabaseSeeder.php
+	
+	2.- Editar.
+         
+	<?php
+
+	use Illuminate\Database\Seeder;
+
+	class DatabaseSeeder extends Seeder
+	{
+	    /**
+	     * Seed the application's database.
+	     *
+	     * @return void
+	     */
+	    public function run()
+	    {
+	        //$this->call(UsersTableSeeder::class);
+	        $this->call(PostsTableSeeder::class);
+
+	    }
+	}
+
+
+42.- Ejecutar la migracion que se creo y configuro.
+	### Este comando vacia todas las tablas
+	### vuelve a crear y ejecutar los seeders
+        ### es decir realiza un rollback.
+
+	php artisan migrate:refresh --seed
+
+43.- Ir a base de datos en tabla post y revisar los registros
+     aleatorios generados por seed.
+
+44.- Ahora revisar los datos en tablas oauth_clients y users, los
+     cuales se vaciaron.
+
+45.- Generar unas rutas apis los cuales seran consumidos por el 
+     usuario una vez reciba el token.
+
+46.- Ir a carpeta routes/api.php, generar la siguente ruta.
+	
+	1.- Crear la ruta de posts para listar todos los
+	posts disponibles.
+	
+	Route::get('posts',function(){
+	return App\Post::all();
+	})->middleware('auth:api'); 
+
+47.- Comprobar en navegador web fucnionalidad de api.
+
+	http://localhost/api/posts
+
+48.- Para poder probar la funcionalidad de la api, usamos postman
+     o en este caso generar un archivo index.php.
+	
+	1.- Salir del proyecto.
+	2.- Crear una carpeta y un archivo index.
+	     mkdir TestApi
+	     cd TestApi
+             touch index.php.
+
+49.- Crear el grant en laravel ya que se borraron datos.
+	php artisan passport:client --password
+
+NOTA: Si por algun motivo estas inportando en proyecto es necesario realizar
+lo siguiente.
+php artisan migrate
+php artisan passport:client --password
+php artisan db:seed
+	
+50.- Probar la funcionalidad en postman.
+	a) Metodo = POST
+	   Ruta = http://localhost/oauth/token
+	b) Encabezado
+	   Key = Content-Type
+	   Value = application/json
+	c)  Body
+	    row = {
+		   "client_id":1,
+		   "client_secret":"pcAURoaWeTF6VQ6oasV8mB9IojaO1PfARyqvlwrw",
+		   "grant_type":"password",
+		   "username":"antonio.correog@gmail.com",
+		   "password":"prueba"
+	          }
+
+51.- Para finalizar realizar una prueba de funcionalida en una aplicacion web 
+     externa.
+	a) Crear un proyect web en cd /var/www/    
+	   mkdir example.com/public_html.
+	
+	b) Crear 2 archivos 
+	touch index.php	 
+	touch posts.html
+	
+	c) Codificar el archivo index.php
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<title></title>
+		<title>TestApi</title>
+		<style type="text/css">
+			input{
+				margin-bottom: 5px;
+				display: block;
+			}
+		</style>
+
+		<script type="text/javascript">
+			/*onload=function(){
+				alert("Funcionando !!!!.");
+			}*/
+		</script>
+		</head>
+	<body>
+	hollla
+	    <form method="POST">
+			<input type="email" id="email" placeholder="Email" />
+			<input type="password" id="password" placeholder="Contraseña" />
+			<input type="submit" id="login" value="Ingresar" />
+		</form>
+		<script type="text/javascript">
+		
+		onload=function(){
+
+		const clientId = 1;
+		const clientSecret = 'pcAURoaWeTF6VQ6oasV8mB9IojaO1PfARyqvlwrw';
+		const grantType = 'password';
+
+		let login = document.getElementById('login');
+
+		login.addEventListener('click',function(e){
+
+			e.preventDefault();
+			    fetch('http://localhost/oauth/token', {
+			    method: 'POST',
+			    headers: {
+			      "Content-type": "application/json"
+			    },
+			    body:JSON.stringify({
+			    	client_id:clientId,
+				client_secret:clientSecret,
+				grant_type:grantType,
+				username:document.getElementById('email').value,
+				password:document.getElementById('password').value
+		    })
+			})
+			.then(function (response) {
+				return response.json();
+			})
+			.then(
+				function(data){
+					console.log(data.access_token);
+					//Guardando en el localstorage
+					localStorage.setItem('token',data.access_token);
+				}
+			)
+			.catch(function (error) {
+			    console.log('Request failed', error);
+			 }); 
+
+		});
+
+   
+		}
+	        </script>
+	</body>
+	</html>
+
+	d) Codificar el archivo posts.html
+		
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<title>Listado de POSTS</title>
+	</head>
+	<body>
+		<ul>	
+		</ul>
+
+	<script type="text/javascript">
+		onload=function(){
+			if(localStorage.getItem('token')){
+				fetch('http://localhost/api/posts', {
+			    method: 'GET',
+			    headers: {
+			      'Authorization':'Bearer '+localStorage.getItem("token")
+			    }
+				})
+				.then(function (response) {
+					return response.json();
+				})
+				.then(
+					function(data){
+						let li='';
+						data.forEach(
+							function(post,index){
+								li +='<li>'+post.title+'</li>'+'<li>'+post.body+'</li>';
+							}
+							);
+						document.querySelector('ul').innerHTML=li;
+
+					}
+				)
+				.catch(function (error) {
+				    console.log('Request failed', error);
+				 });
+
+			}
+		}
+	</script>
+	</body>	
+	</html>
+
+
+52.- >>>METODO CLIENT CREDENTIAL<<<
+     El client credential es un tipo de grant que no necesita un 
+     usuario y una contraseña  para obtener el token
+     a) Necesitamos registrar en la plataforma un cliente
+	ese cliente nos da un id, secret, tipo_grant que se va a
+	utilizar en este caso los tipos de roles, en este caso es
+	el client_credential.
+     b) Los datoa propocionado lo utilizamos en nuestra aplicacion
+	externa y realizamos una peticion para obtener un token 
+	valido, una vez con el token lo podemos guardar de distintas
+	formas(localStore o en una variable), en que eseneario usar
+	este tipo de grant.
+     c) Ejemplo cuando entramos a twiter en el apartado de desarrolladores,
+	nos pide generar un cliente, para poder acceder a los distintos endpoints
+	esto permite poder realizar twits desde una aplicacion externa, poder
+	ver cantidad de meguasta, los retwits,etc. Este tipo de grant es el
+	que se va a utilizar, para poder acceder a los recursos que nos da
+	la plataforma, este tipo de autenticacion es ideal para autenticacion
+	maquina a maquina. 
+     d) Es util para automatizar trabajos de mantenimientos a la aplicacion desde
+	un scripts, ejemplo red social que utiliza bots programados para que
+	permita manejara datos de consultas de recomenadaciones, ejemplo 
+	genere posts para un blog que se a programado anteriormente.
+
+53.- Como utilizarlo.
+	a) Ir a directorio de app/Http/Kernel.php, registrar en encabezado.
+	use Laravel\Passport\Http\Middleware\CheckClientCredentials;
+        b) Ir al apartado de $routeMiddleware
+	'client' => CheckClientCredentials::class,
+
+54.- Ahora lo que se va a relizar será lo siguiente el middleware que declaramos
+     en en routeMiddleware el cuál es client se va a declarar en routes para que 
+     cada peticion este protegida y no cualquier pueda acceder simplemente los
+     clientes autenticados.
+     
+	a) Ir al poryecto de laravel  en la carpeta routes/api.php
+	
+	Route::get('clients/posts',function(){
+		return App\Post::all();
+        })->middleware('client');
+
+	b) Registrar un cliente nuevo en la ruta generada anteriormente.
+	http://localhost/client
+	
+	c) Una vez terminado el registro nos redireccionara a la siguiente ruta,
+	dónde nos proporcionara los datos.
+	
+        http://localhost/oauth/clients
+	###resultado algo similar
+	[
+	 {
+	    "id": 2,
+	    "user_id": 1,
+	    "name": "TestApp",
+	    "secret": "xn7Y5Wkjwi9sMvfHDn49v8ZExnmMjBYc0irtU9rT",	
+	    "redirect": "http://localhost",
+	    "personal_access_client": false,
+	    "password_client": false,
+	    "revoked": false,
+	    "created_at": "2019-01-03 17:59:19",
+	    "updated_at": "2019-01-03 17:59:19"
+	  }
+	]
+
+55.-Volver al apartado donde esta el formularion y nos mostrará en tabla los datos.
+    http://localhost/client
+	a) La tabla arroja lo siguiente.
+	
+	ID	Name	Redirect	Secret
+	2	TestApp	http://localhost	xn7Y5Wkjwi9sMvfHDn49v8ZExnmMjBYc0irtU9rT
+
+
+56.- Crear el siguiente archivo en la carpeta de example.com
+	nano example.com/public_html/client_credentials.html
+	
+	a) Con el siguiente código.
+	
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<title>Client Credentials</title>
+	</head>
+	<body>
+		<div id="wrapper">
+			<form method="POST">
+				<input type="submit" id="token" value="Obtener token" />
+			</form>
+		</div>
+		<script type="text/javascript">
+
+			onload=function(){
+
+			const clientId = 2;
+			const clientSecret = 'xn7Y5Wkjwi9sMvfHDn49v8ZExnmMjBYc0irtU9rT';
+			const grantType = 'client_credentials';
+
+			let token = document.getElementById('token');
+
+			if(localStorage.getItem('client_credentials') ){
+				document.getElementById('wrapper').innerHTML='Autenticado!!!';
+				fetch('http://localhost/api/clients/posts',{
+					method:'GET',
+					headers:{'Authorization':'Bearer '+localStorage.getItem('client_credentials') }
+				}).then(function(response){
+					return response.json();
+				})
+				.then(function(data){
+					console.log(data);
+				})
+	             /*return para que el codigo no se siga ejecuatndo*/
+				return;
+			}
+
+
+			token.addEventListener('click',function(e){
+
+				e.preventDefault();
+				    fetch('http://localhost/oauth/token', {
+				    method: 'POST',
+				    headers: {
+				      "Content-type": "application/json"
+				    },
+				    body:JSON.stringify({
+				    	client_id:clientId,
+						client_secret:clientSecret,
+						grant_type:grantType
+				    })
+					})
+					.then(function (response) {
+						return response.json();
+					})
+					.then(
+						function(data){
+							console.log(data.access_token);
+							//Guardando en el localstorage
+							localStorage.setItem('client_credentials',data.access_token);
+							location.reload();
+						}
+					)
+					.catch(function (error) {
+					    console.log('Request failed', error);
+					 }); 
+
+			});
+
+		   
+	     	}
+		</script>
+	</body>
+	</html>
+
+
+
+
+57.- En routes/api.php del proyecto generar otra ruta.
+
+	Route::post('clients/posts',function(Request $request){
+		App\Post::create([
+			'title' => $request->input('title'),
+			'body' => $request->input('body')
+		]);
+	
+		return ['status'=>200];
+	})->middleware('client');
+ 
+
+
+58.- Generar un nuevo post desde el  lado del cliente.
+example.com/client_credentialsPOST.html
+
+
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<title>Client Credentials</title>
+	</head>
+	<body>
+		<div id="wrapper">
+			<form method="POST">
+				<input type="submit" id="token" value="Obtener token" />
+			</form>
+		</div>
+		<script type="text/javascript">
+
+			onload=function(){
+
+			const clientId = 2;
+			const clientSecret = 'xn7Y5Wkjwi9sMvfHDn49v8ZExnmMjBYc0irtU9rT';
+			const grantType = 'client_credentials';
+
+			let token = document.getElementById('token');
+
+			if(localStorage.getItem('client_credentials') ){
+				document.getElementById('wrapper').innerHTML='Autenticado!!!';
+				fetch('http://localhost/api/clients/posts',{
+					method:'POST',
+					headers:{'Authorization':'Bearer '+localStorage.getItem('client_credentials'), 'Content-type':'application/json ' },
+					body:JSON.stringify({
+				    	title:'Esto es una prueba !!!',
+						body:'Descripción usando  Client Credentials',
+				    })
+				}).then(function(response){
+					return response.json();
+				})
+				.then(function(data){
+					console.log(data);
+				})
+	             /*return para que el codigo no se siga ejecuatndo*/
+				return;
+			}
+
+
+			token.addEventListener('click',function(e){
+
+				e.preventDefault();
+				    fetch('http://localhost/oauth/token', { 
+				    method: 'POST',
+				    headers: {
+				      "Content-type": "application/json"
+				    },
+				    body:JSON.stringify({
+				    	client_id:clientId,
+						client_secret:clientSecret,
+						grant_type:grantType
+				    })
+					})
+					.then(function (response) {
+						return response.json();
+					})
+					.then(
+						function(data){
+							console.log(data.access_token);
+							//Guardando en el localstorage
+							localStorage.setItem('client_credentials',data.access_token);
+							location.reload();
+						}
+					)
+					.catch(function (error) {
+					    console.log('Request failed', error);
+					 }); 
+
+			});
+
+		   
+	     	}
+		</script>
+	</body>
+	</html>
+
+
+
+59.- Insertar los datos de registro.
+	Y nos devuelve un status  200 en consola
+
+	a) Ir a la base de da datos y realizar la consulta de insersion en la 
+	   tabla de posts.
+
+60.- >>>>PERSONAL ACCESS TOKEN <<<<
+	En ocasiones los usuarios necesitan emitir tokens asi mismos,
+	sin pasar por el flujo de administracion tipico,
+	permitir que los usuarios emitan tokens a travez de una UI, es
+	util para que dichos usuarios experimenten con su api, es una forma
+	de emitir tokens de acceso general.
+	NOTA:tiene un periodo de vida largo.
+
+
+														+----------------------+
++---------+     +--------+     +----------+             | GET REOSURCE API 200 |
+|         |		| ACCESS |     |          +-------------+----------------------+                     
+| CREATE  +-----+ TOKEN  +-----| AUTH:API |    
+| TOKEN   |     |        |     |          +-------------+-----------------------+                         
++---------+     +--------+     +----------+             |  UNAUTHORIZED 401     |                        
+                                                        +-----------------------+
+
+
+61.- Revisar la lista de rutas disponibles en el proyecto de laravel.
+	php artisan routes:list
+
+	a) Concentrarse en los de tipo  oauth/personal-access-tokens
+	b) como funciona: cada peticion que se realiza a este tipo de rutas
+		nos devuel el token tal cual es y no es necesario guardarlo en localStorage
+		ya que siempre nos lo devuelve actualizado.
+
+
+
+62.- Como  crear ese tipo de tokens, para ello agregamos un formulario dentro de la routes/web.php
+	 en la ruta de /client
+
+	 a) en la vista de 
+		resources/views/client.blade.php
+	
+		<h2>Personal Access Tokens</h2>
+		<form action="{{ url('/oauth/personal-access-tokens') }}" method="POST">
+		     <input type="text" name="name" placeholder="Nombre" />
+		     <input type="submit" value="Crear" />
+		     {{ csrf_field() }}
+		</form>  
+
+		b) Comprobar la funcionalidad en el navegador web.
+			localhost/client
+
+
+63.- Antes de  realizar algun registro con esta  ruta es necesario ejecutar el siguiente
+	comando.
+
+php artisan passport:client --personal
+
+###Pedira un nombre para el cliente
+>Personal Access Tokens
+
+###Genera los siguientes accesos para poder emitir codigos
+Client ID: 3
+Client Secret: gfh2uwMQOlVvPG6gT3a37kRRaG9llss2MFViDRVp
+
+64.- Volver al navegador Web ir a ruta.
+localhost/client
+	
+	a) En personal access tokens
+	 generar uno con el nombre de
+	 	MacBook
+    
+    b) Como resultado nos redirige a la siguientes
+	ruta =
+	http://localhost/oauth/personal-access-tokens
+
+	RESULTADO = 
+	{ 
+	  "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6Ijg3OGM2YjNiYzljNjMxNTQ3OWUxZTEzY2VhNmEzODExNjlmYzQ0NWVmZTg5MTc2M2Q1YTFmN2NiNjFjNDVkZDk0MDhmOTBkZmQwZjM1ZWMwIn0.eyJhdWQiOiIzIiwianRpIjoiODc4YzZiM2JjOWM2MzE1NDc5ZTFlMTNjZWE2YTM4MTE2OWZjNDQ1ZWZlODkxNzYzZDVhMWY3Y2I2MWM0NWRkOTQwOGY5MGRmZDBmMzVlYzAiLCJpYXQiOjE1NDY1NDYwMzAsIm5iZiI6MTU0NjU0NjAzMCwiZXhwIjoxNTc4MDgyMDMwLCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.LA-sydgC7Dj3FaqQw2r0ZKiAYMmQ5ohxgEFeNpxGWgmVeNSrLGvMwUSid8kllJafENX_BjLQUdkV0LjuEh6Ts3r3LCg1wTxlbs6Wa2yKWyW6yEWyQQmSW4YPkse3xyk3lRyfC-cDOGKytkx7IrUjZ3xCNQvOE-AKn9euyMwlugpvCu3GLpyZ_7q-NUaBBS45BhBWAIQTIo9W-ozZbPxkbSwhbwezW-GYOD1yapaxOj205vBB9j4CUJRYn6JQocwkfBWiS5g6VGEBgd2pvHcwDysbPDeCSiZT9kN1MrHZUzrywALwEtyojqZTa2Tb5OzPpwn0h1re6ZSl_8B6EemiPCuMth8CGhYohsMok7Rhuk5TLf7wguZnUB5xaue9BY9q4HsBTx9d4-n-694MoSvhmh8Odas0B4vYMpM0guyHms_CpqmYPsDPi_7CdPQQz55Eo6uqi8xYy0nhjYoeOvKxJvXxBg1_AoUQ51vD3sADpqNwpMrMjdWeuVA_NRLfeeFNYRlqIvgaGV5Ds__dX6kQev-kljpBYfmD8udngwuICbCjZ337ZKnbC2cPoW4HX00f2FpttavMSy0FguNMh-cSDkryuy0AODhPZAOA2hQEQCJu_epxYOCzIbe_3OkOMcmBB1tDauuEogNDd9DIdx90bw4A0YF6V3WNYm0RPNGbcz0",
+	  "token": {
+	    "id": "878c6b3bc9c6315479e1e13cea6a381169fc445efe891763d5a1f7cb61c45dd9408f90dfd0f35ec0",
+	    "user_id": 1,
+	    "client_id": 3,
+	    "name": "MacBook",
+	    "scopes": [
+	      
+	    ],
+	    "revoked": false,
+	    "created_at": "2019-01-03 20:07:10",
+	    "updated_at": "2019-01-03 20:07:10",
+	    "expires_at": "2020-01-03 20:07:10"
+	  }
+	}
+
+65.- A continuacion probar la funcionalidad de los token des una aplicacion tipo  personal_access_tokens
+	ir al proyecto de prueba
+	a) Crear un archivo en directorio: 
+	cd example.com
+	touch personal_access_tokens.html
+	
+	b) Editar el archivo:
+	personal_access_tokens.html
+
+	<!DOCTYPE html>
+	<html>
+	<head>
+	<title>Client Credentials</title>
+	</head>
+	<body>
+		<div id="wrapper">
+			<form method="POST">
+				<input type="submit" id="resources" value="Obtener recursos" />
+			</form>
+		</div>
+		<script type="text/javascript">
+
+			onload=function(){
+
+			let resources = document.getElementById('resources');
+
+	        resources.addEventListener('click',function(e){
+	        	e.preventDefault();
+			    let token='eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImZkZTJmNWExNDliMzhhZmFiODY4NGNiNzI4MzExM2JhZmMxY2E2YzFiMjZlZTYzYjBiYTM5NDczNTJmODdlMjRkYWJmOGUzMzkwNmQwMDk5In0.eyJhdWQiOiIzIiwianRpIjoiZmRlMmY1YTE0OWIzOGFmYWI4Njg0Y2I3MjgzMTEzYmFmYzFjYTZjMWIyNmVlNjNiMGJhMzk0NzM1MmY4N2UyNGRhYmY4ZTMzOTA2ZDAwOTkiLCJpYXQiOjE1NDY1NTMzMjEsIm5iZiI6MTU0NjU1MzMyMSwiZXhwIjoxNTc4MDg5MzIxLCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.IhO-ufmVjj22OFukYdtjaAgdEOgp5ZNQBtYabKe-XbTQEjqlpxrnjm5tNIZJk8JZjqmrtpIl36Ni0rlZXX7UNfhRycX2vSj3rPkq6dfJE1aeGCNb5QSuSZGh4MXJ5Pg0rQbga392K61NSSuW-dTZbEKVMvM0hTsMi7oExm50Xv_kpbeosZDw8-39-wGgFwF-Omyobyv9oa_1EGWj7EAC25OVNiqJj3Mfq6mBynWdQa660XDyAM59Fni60KXTtb5T5Dcqc2qYB1HtRTN8kXGZPA913rcLuuuRJaWSULfQWi3cx80o47KzZ9mdKBwaeOh2pGXr1YAZXmPhXiYSzIA39iNdwSOC1kMgvMlCEI4ww0rUclYGenNnY31NpIFIzRivh5Xfv5BIQYVO1qffqBbfkt_DfDX9V5XK_O3i4xLfekzXgJajFen_oIm7349wZo-F5I3PPETvomNVn5pr0bisgxfxP5NQsJMRSigaTSXjT84eGIKnoDgN77HFauttv4tQWU2QiYsaU8rAYE90yW01GyEL5s5F0A4eXNezZZxN5WXMot87ZPLXpVjxuZiOXWgAZhiEGOJSbG6bpa742ftfzMDNGtve8sQfT6QrAiS2DvNeUckLhxyRdoXjI2vBaTbTuP80UURVd4BDJOStDa7O5YymLUInFhq88EpzJawBJ28';
+
+				fetch('http://localhost/api/clients/posts',{
+					method:'GET',
+					headers:{'Authorization':'Bearer '+token, 'Content-Type':'application/json'}
+				})
+				.then(function (response) {
+						return response.json();
+				})
+				.then(function(data){
+				       console.log(data);
+				})
+				.catch(function (error) {
+					console.log('Request failed', error);
+				});
+	             /*return para que el codigo no se siga ejecuatndo*/
+				return;
+			});
+
+	     	}
+		</script>
+	</body>
+	</html>
+
+
+
+65.- Comprobar la funcionalidad de la aplicacion desde el navegador web.
+	a) Ir al navegador web.
+	http://example.com/personal_access_tokens.html
+
+	b) Revisar la informacion en la consola para verificar la informacion
+	de los servicios disponibles.
+
+
+66.-Final
+
+
+
+
+Otra OPCION
+https://medium.com/@cvallejo/sistema-de-autenticaci%C3%B3n-api-rest-con-laravel-5-6-240be1f3fc7d
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*****************************************
+
+****** FUENTE INVESTIGRACION ************
+*****************************************
+Oauth2
+
+FUENTES: https://www.youtube.com/watch?v=VIDnX7APKHk
+         https://www.youtube.com/watch?v=Q87yOcMcPm8
+
+
+Permite dar permisos de acceso a un recursos desde un tercero 
+para que este pueda manipular ciertas pasrtes de los crecuros
+limitado por los permisos de acceso.
+
+Oauth2 cuenta con 4 flujos:
+
+Flujo de acceso desde nativas de dispositivos moviles.
+Aplicaciones single page.
+
+	1.- Flujo autorizacion code(autenticacion por facebook o cuenta de google, el tirmpo es corto de unos 15 min)
+	FUNCIONAMIENTO:
+	1) Aplicacion solicita tercero.
+	2) Solicita codigo de autorizacion al servidor de google 
+	y le devuelven un codigo con cierto nivel de permisos.
+	3) Ese codigo le llega a la aplicacion de 3°, y con ese codigo
+	va a servidores de google y pide un token.
+	4) El token generado tiene los permisos que yo como usuario
+	le he dado permitido utilizar.
+	5) Ese codigo de autorizacion se llama grant.
+	6) La app 3° guarda ese codigo de autorizacion.
+	NOTA: para ser un provedor de autenticacion es necesario implementar  un servidor de autenticacion.
+
+**************************************************************
++--------+	 
+|Resource|
+| Owner  |
++--------+
+    ^
+    |
+   (B)
++---|----+
+|        |         Client Identifier      +---------------+
+|  User -+---(A)-- & Redireccion URI  --->|               |
+|  Agent |				  | Authorization |
+|       -+---(B)-- User authenticates --->|     Server    |
+|        |                                |               |
+|       -+---(C)-- Authorization Code ---<|		  |
+|        |                                +---------------+
++-|---|--+                                   ^         v
+  |   |                                      |         |
+ (A) (C)                                     |         |
+  |   |                                      |         |
+  ^   v                                      |         |
++--------+                                   |         |
+|        |>---(D)-- Authorization Code ------+         |
+| Client |                                             |
+|        |                                             |
+|        |<---(E)--- Access Token ---------------------+
++--------+	(w/ Optional Refresh Token)
+
+Note: The lines illustrating ateps (A), (B), and (C) anre broken into
+two parts as they pass through user-agent.
+
+**************************************************************
+  Nota: En las nuevas especificaciones de oauth2 se requiere ssl.
+	En oauth1 se requeria encriptar valores de acceso.
+	En oauth2 no se requieren encriptar pero por ello si
+	  se requiere de ssl ya que este protocolo es la que 
+	  realiza la encriptacion.
+	Google utiliza (JWT)JsonWebToken	
+	Otros utilizan Hashes como Hash5.
+	Entonces las especificaciones estan abiertas al provedor.
+	Antes de que los flujos ocurran el cliente debe de estar
+	  registrador en el servidor de autorizacion, es decir
+	  se tiene que tener una cuenta en twiter, facebook o google
+          de desarrollador.
+        Provedor de app, tiene una url de provedor para que el server
+	  lo detecte como valida
+		               
+***********************************
+*****Implementacion de oauth2******
+***********************************
+
+Como hago autenticacion oauth2.
+Implementacion de navegador en este caso es como cliente.
+phplink
+passport framework
+	 emitir token.
+
+Go Implementa el http
+	Implementar persistencia oauth2.
+	Si mi aplicacion es un provedor
+	Implicit grant: par aplicaciones moviles, se hace en web.
+        
+
+
+Single Place Aplication.
+
++-----------+                   +----------------------------+
+| Navegador |                   |  Servidor provedor Google  |		
+| Web       |			+----------------------------+			
++-----------+					^  v
+    |						|  |
+    |						|  |
+    v						|  |					
++--------------+>>------------------------------+  |
+|Servidor Proxi|  [ Usa session de usuario         |
++--------------+   Compartida, para authenticar    |
+    ^	       ^   la aplicacion ]                 |
+    |          |                                   |         
+    |          +-----------------------------------+
+    v
++---------------+
+| Servidor node |
+| Guarda tokens |
++---------------+
+
+1.-Codigo de autorizacion.
+2.-Flujo implicito.
+3.-Resource owner password credential.
+4.-Client credentials.
+
+Recomendaciones:
+	Siemopre pasen un parametro state
+	para evitar request forgetting, que alguien 
+	modifique la respuesta del token, verificar
+	siempre el valor que se añadio en un principio.
+        Paraa evitar que en el tarncito no hayan modificado
+	el valor de la peticion.
+
+NOTA:Firma de peticiones (facebook). 
+     Man in the milddleware.
+     SSL: permitio
+
+
+NOTAS:
+     Autorizacion Grant.
+     Token autorizacion.
+     Token refresco.
+     URL de redireccion.

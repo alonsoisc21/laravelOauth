@@ -1,0 +1,29 @@
+1.-Crear directorio
+sudo mkdir /usr/share/adminer
+
+2.-Ir a directorio
+cd  /usr/share/adminer/
+
+3.- Descargar adminer
+sudo wget "https://www.adminer.org/latest.php" 
+
+4.-Crear enlace simbolico
+sudo ln -s /usr/share/adminer/latest.php /usr/share/adminer/adminer.php
+
+5.-Crear un nuevo  archivo .conf de adminer en apache2
+sudo echo "Alias /adminer.php /usr/share/adminer/adminer.php"  | sudo tee /etc/apache2/conf-available/adminer.conf
+
+"sudo service apache2 restart"//Me pidio este paso.
+
+6.-Habilitar servicio de adminer.conf
+sudo a2enconf adminer.conf
+
+7.-Reiniciar apache2
+sudo service apache2 restart 
+sudo systemctl restart apache2
+
+8.-Ir a navegador web
+localhost/adminer.php
+
+
+ 

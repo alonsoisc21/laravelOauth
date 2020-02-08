@@ -1,0 +1,18 @@
+-- Password Grant Tokens (GrantType 'password'):
+	- exclusivo para el dueño de la plataforma.
+	- usuario y contraseña.
+	- devuelve un token para acceder a recursos.
+	- comando: php artisan passport:client --password
+
+-- Client:
+	- comando: php artisan passport:client
+	- previa autorizacion del cliente.
+	- es necesario una ruta callback para aprobar la solicitud
+
+
+-- Client Credentials Grant Tokens:
+	- comando: php artisan passport:client --client
+	- adecuada para autenticacion maquina a maquina.
+
+-- Personal Access Tokens
+	-- comando: php artisan passport:client --personal

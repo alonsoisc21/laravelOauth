@@ -1,0 +1,105 @@
+*****************************************
+****** APACHE2 VirtualHosts *************
+*****************************************
+FUENTE: https://www.digitalocean.com/community/tutorials/como-configurar-virtual-hosts-de-apache-en-ubuntu-16-04-es
+
+1.- Crear un directorio de ejemplo
+sudo mkdir -p /var/www/example.com/public_html
+
+2.- Otorgar permiso de usuario.
+sudo chown -R $USER:$USER /var/www/example.com/public_html
+
+3.- (Opcional). habilitar el los permisos de lectura.
+sudo chmod -R 755 /var/www
+
+4.- Creamos un archivo index.html, primero acceder a carpeta 
+    de proyecto.
+	
+cd /var/www/example.com/public_html
+
+nano index.html
+
+<html>
+  <head>
+    <title>¡Bienvenido a Example.com!</title>
+  </head>
+  <body>
+    <h1>¡Lo lograste! El virtual host example.com está funcionando</h1>
+  </body>
+</htm
+
+
+
+5.- Ir a carpeta de configuracion de apache2 en sistios disponibles.
+
+cd /etc/apache2/sites-available/
+
+sudo cp 000-default.conf example.com.conf
+
+6.- Abrir el archivo y realizar la configuracion correspondiente.
+sudo nano example.com.conf
+
+
+        ServerAdmin admin@example.com
+        ServerName example.com
+        ServerAlias www.example.com
+
+        DocumentRoot /var/www/example.com/public_html
+
+        <Directory /var/www/example.com/public_html >
+                Options Indexes FollowSymLinks MultiViews
+                AllowOverride All
+                Order allow,deny
+                allow from all
+        </Directory>
+
+6.1.- Configurar el puerto de escucha en el archivo ports.conf
+	Listen [puerto asignado]
+
+7.- Habilitar el sitio.
+
+sudo a2ensite example.com.conf
+
+
+8.- Desabilitar la configuracion por defecto.
+
+sudo a2dissite 000-default.conf
+
+
+9.- Reiniciar apache2
+
+sudo systemctl restart apache2
+sudo service apache2 restart
+
+
+10.- Ir a archivo Hosts para consigurar el sitio.
+
+sudo nano /etc/hosts
+
+127.0.0.1 example.com
+
+##OPCIONAL
+NOTA: para utilizar un dominio que no es real
+111.111.111.111 example.com
+
+
+
+
+11.- Comprobar en navegador web la funcionalid de sitio virtual.
+
+http://example.com
+
+
+-------------------------------------------------------------
+
+12.- Levantar varios sitios en varios puertos.
+
+a cada virtualhost asignarle un puerto diferente para cada sitio.
+modificar el archivo /etc/apache2/ports.conf agregando el puerto de escucha
+reiniciamos apache
+
+sudo systemctl restart apache2
+sudo service apache2 restart
+
+
+
